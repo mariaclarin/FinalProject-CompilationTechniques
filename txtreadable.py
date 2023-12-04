@@ -124,33 +124,18 @@ class JavaScriptParser:
         return Token(token_type, delimiter, line_number, index + 1), index + 1
 
     def extract_single_line_comment(self, line, index, line_number):
-        # DFA for single-line comments
         comment = "//"
-        index += 2  # Skip the second '/'
+        index += 2  
         while index < len(line) and line[index] != '\n':
             comment += line[index]
             index += 1
 
 
         return Token('Comment', comment, line_number, index), index
-# elif char == '/' and i + 1 < code_length and input[i + 1] == '*':
-                # comment = char
-                # i += 1
-                # while i + 1 < code_length and not (input[i] == '*' and input[i + 1] == '/'):
-                #     comment += input[i]
-                #     if input[i] == '\n':
-                #         line += 1
-                #     i += 1
-                # tokens.append((TOKEN_COMMENT, comment + "*/"))
-                # #Multiline comment error handling
-                # if i + 1 >= code_length:
-                #     print(f"Unterminated comment at line {line}, position {i - 1}")
-                # i += 2
 
     def extract_multi_line_comment(self, line, index, line_number):
-        # DFA for multi-line comments
         comment = "/*"
-        index += 2  # Skip the '*' after '/'
+        index += 2  
         while index < len(line) and not (line[index] == '*' and line[index+1]== '/') :
             comment += line[index]
             if line[index] =='\n':
@@ -159,7 +144,6 @@ class JavaScriptParser:
         return Token('Comment', comment, line_number, index), index
     
     def extract_operator(self, line, index, line_number):
-        # Check for the '/' operator that might indicate the start of a comment
         if line[index] == '/':
             next_index = index + 1
             if next_index < len(line):
@@ -191,8 +175,9 @@ class JavaScriptParser:
 class JavaScriptGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("JavaScript Parser GUI")
-
+        self.root.title("JavaScript Validator")
+        self.root.geometry("1200x700")
+        self.root.resizable(True, True)
         self.text = tk.Text(self.root, wrap='word', width=50, height=10)
         self.text.insert(tk.END, """
         var x = 10;
@@ -219,13 +204,11 @@ class JavaScriptGUI:
         self.scrollbar.grid(row=0, column=1, sticky='ns')
         self.text['yscrollcommand'] = self.scrollbar.set
 
-        self.result_tree = ttk.Treeview(self.root, columns=('Token Type', 'Lexeme', 'Line', 'Index'))
-        self.result_tree.heading('#0', text='Output')
+        self.result_tree = ttk.Treeview(self.root, columns=('Token Type', 'Lexeme', 'Line', 'Index'), show='headings')
         self.result_tree.heading('Token Type', text='Token Type')
         self.result_tree.heading('Lexeme', text='Lexeme')
         self.result_tree.heading('Line', text='Line')
         self.result_tree.heading('Index', text='Index')
-        self.result_tree.column('#0', width=200, stretch=tk.NO)
         self.result_tree.column('Token Type', anchor='center')
         self.result_tree.column('Lexeme', anchor='center')
         self.result_tree.column('Line', anchor='center')
