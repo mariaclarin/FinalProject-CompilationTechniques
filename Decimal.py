@@ -127,7 +127,6 @@ class JavaScriptParser:
             
             if char == '.':
                 if decimal_point_encountered:
-                    # If a decimal point is already encountered, break the loop
                     break
                 else:
                     decimal_point_encountered = True
@@ -136,10 +135,8 @@ class JavaScriptParser:
             index += 1
 
         if '.' in number:
-            # If the number contains a decimal point, consider it a float
             return Token('Decimal', float(number), line_number, index), index
         else:
-            # If the number is composed only of digits, consider it an int
             return Token('Number', int(number), line_number, index), index
 
     def extract_string(self, line, index, line_number):
