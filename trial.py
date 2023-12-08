@@ -272,7 +272,7 @@ class JavaScriptGUI:
         self.result_tree.column('Line', anchor='center')
         self.result_tree.column('Index', anchor='center')
 
-        self.result_tree.grid(row=0, column=2, padx=10, pady=15, sticky='news')
+        self.result_tree.grid(row=0, column=2, padx=10, pady=10, sticky='news')
 
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(0, weight=1)
