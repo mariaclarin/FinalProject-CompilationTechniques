@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkinter.font import Font
+
+
 
 class Token:
     def __init__(self, token_type, lexeme, line, index):
@@ -116,15 +119,28 @@ class JavaScriptParser:
             index += 1
         
         return Token('Identifier', identifier, line_number, index), index
-
+    
     def extract_number(self, line, index, line_number):
         # DFA for numbers
         number = ""
-        while index < len(line) and line[index].isdigit():
-            number += line[index]
+        decimal_point_encountered = False
+
+        while index < len(line) and (line[index].isdigit() or line[index] == '.'):
+            char = line[index]
+            
+            if char == '.':
+                if decimal_point_encountered:
+                    break
+                else:
+                    decimal_point_encountered = True
+            
+            number += char
             index += 1
 
-        return Token('Number', number, line_number, index), index
+        if '.' in number:
+            return Token('Float', float(number), line_number, index), index
+        else:
+            return Token('Number', int(number), line_number, index), index
 
     def extract_string(self, line, index, line_number):
         # DFA for strings
@@ -169,7 +185,7 @@ class JavaScriptParser:
                 line_number +=1
             index+=1
         self.multi_line = True
-        return Token('First_Comment', comment, line_number, index), index
+        return Token('First_Comment', comment, line_number, index), index, 
     
     def extract_operator(self, line, index, line_number):
         if line[index] == '/':
@@ -245,11 +261,11 @@ class JavaScriptGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("JavaScript Validator")
-        self.root.geometry("1200x700")
+        self.root.geometry("1230x1000")
         self.root.resizable(True, True)
         self.text = tk.Text(self.root, wrap='word', width=50, height=10)
         self.text.insert(tk.END, """
-        var x = 10;
+        var x = 10.5;
         if (x > 5) {
             console.log("Hello, world!");
         }
@@ -266,34 +282,110 @@ class JavaScriptGUI:
         here
         */
         """)
+        #left frame containing text input field        
+        self.main_frame = tk.Frame(self.root)
+        self.main_frame.grid(row=0, column=0, sticky='nsew')
 
+        self.text = tk.Text(self.main_frame, wrap='word', width=50, height=10)
+        self.text.insert(tk.END, """
+        var x = 10.5;
+        if (x > 5) {
+            console.log("Hello, world!");
+        }
+        for (var i = 0; i < 5; i++) {
+            if (i % 2 === 0) {
+                continue;
+            } else {
+                break;
+            }
+        }
+        alert("This is an alert!");
+        //comment here
+        /*multiline
+        here
+        */
+        """)
         self.text.grid(row=0, column=0, padx=10, pady=10, sticky='news')
+        self.text.columnconfigure(0, weight=1)
 
-        self.scrollbar = tk.Scrollbar(self.root, command=self.text.yview)
+        #divider
+        self.scrollbar = tk.Scrollbar(self.main_frame, command=self.text.yview)
         self.scrollbar.grid(row=0, column=1, sticky='ns')
         self.text['yscrollcommand'] = self.scrollbar.set
 
-        self.result_tree = ttk.Treeview(self.root, columns=('Token Type', 'Lexeme', 'Line', 'Index'), show='headings')
-        self.result_tree.heading('Token Type', text='Token Type')
-        self.result_tree.heading('Lexeme', text='Lexeme')
-        self.result_tree.heading('Line', text='Line')
-        self.result_tree.heading('Index', text='Index')
-        self.result_tree.column('Token Type', anchor='center')
-        self.result_tree.column('Lexeme', anchor='center')
-        self.result_tree.column('Line', anchor='center')
-        self.result_tree.column('Index', anchor='center')
-
-        self.result_tree.grid(row=0, column=2, padx=10, pady=10, sticky='news')
-
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(0, weight=1)
-        self.root.columnconfigure(2, weight=1)
 
+        #frame of tables (right side)
+        self.tables_frame = tk.Frame(self.main_frame)
+        self.tables_frame.grid(row=0, column=2, padx=10, pady=10, sticky='nsew')
+
+        #token table
+        self.token_table = ttk.Treeview(self.tables_frame, columns=('Token Type', 'Lexeme', 'Line', 'Index'), show='headings')
+        self.token_table.heading('Token Type', text='Token Type')
+        self.token_table.heading('Lexeme', text='Lexeme')
+        self.token_table.heading('Line', text='Line')
+        self.token_table.heading('Index', text='Index')
+        self.token_table.column('Token Type', anchor='center')
+        self.token_table.column('Lexeme', anchor='center')
+        self.token_table.column('Line', anchor='center')
+        self.token_table.column('Index', anchor='center')
+        self.token_table.grid(row=0, column=0, padx=10, pady=10, sticky='news')
+
+        #syntax table
+        self.syntax_table = ttk.Treeview(self.tables_frame, columns=('Syntax Errors', 'Line', 'Index'), show='headings')
+        self.syntax_table.heading('Syntax Errors', text='Syntax Errors')
+        self.syntax_table.heading('Line', text='Line')
+        self.syntax_table.heading('Index', text='Index')
+        self.syntax_table.column('Syntax Errors', anchor='center')
+        self.syntax_table.column('Line', anchor='center', width= 100)
+        self.syntax_table.column('Index', anchor='center')
+        self.syntax_table.grid(row=1, column=0, padx=10, pady=10, sticky='news')
+        self.syntax_table.column('Syntax Errors', width=500)  # Set a specific width for the "Syntax Errors" column
+        self.syntax_table.column('Line', width=100)  
+        self.syntax_table.column('Index', width=100)  
+
+
+        #frame of tables sizing config
+        self.tables_frame.rowconfigure(0, weight=2)
+        self.tables_frame.rowconfigure(1, weight=1)  
+        self.tables_frame.columnconfigure(0, weight=1)
+        self.tables_frame.columnconfigure(1, weight=1)
+
+
+        #parse and load file button config
         self.parse_button = tk.Button(self.root, text="Parse", command=self.parse_code)
-        self.parse_button.grid(row=1, column=0, columnspan=3, pady=10)
+        self.parse_button.grid(row=3, column=0, pady=(5, 5),padx=(0,200), sticky='s')
 
         self.load_file_button = tk.Button(self.root, text="Load File", command=self.load_file)
-        self.load_file_button.grid(row=1, column=0, pady=10)
+        self.load_file_button.grid(row=3, column=0, pady=(5, 5), padx=(200,0), sticky='s')
+
+        #rowsize for table rows
+        font = Font(family='Arial', size=20) 
+        style = ttk.Style()
+        style.configure('Treeview', rowheight= font.metrics()['linespace']+20  ) 
+
+        #double click event for row display popup
+        self.double_click_cooldown = False
+        self.token_table.bind("<Double-1>", self.on_double_click)
+    
+    def on_double_click(self, event):
+        if not self.double_click_cooldown:
+            item = self.token_table.selection()
+            if item:
+                #get the content in the row
+                item_values = self.token_table.item(item, "values")
+                messagebox.showinfo("Row Information", f"Token Type: {item_values[0]}\n"
+                                                    f"Lexeme: {item_values[1]}\n"
+                                                    f"Line: {item_values[2]}\n"
+                                                    f"Index: {item_values[3]}")
+
+            #prevent double popups with a cooldown
+            self.double_click_cooldown = True
+            self.root.after(500, self.reset_double_click_cooldown)
+
+    def reset_double_click_cooldown(self):
+        self.double_click_cooldown = False
 
     def parse_code(self):
         code = self.text.get("1.0", tk.END)
@@ -304,16 +396,16 @@ class JavaScriptGUI:
             messagebox.showerror("Bracket Error", error_message)
         else:
             tokens, errors = parser.tokenize_with_errors(code)
-            self.result_tree.delete(*self.result_tree.get_children())
+            self.token_table.delete(*self.token_table.get_children())
             for token in tokens:
-                self.result_tree.insert('', 'end', values=(token.token_type, token.lexeme, token.line, token.index))
+                self.token_table.insert('', 'end', values=(token.token_type, token.lexeme, token.line, token.index))
             for error in errors:
-                self.result_tree.insert('', 'end', values=(error.token_type, error.lexeme, error.line, error.index),
+                self.token_table.insert('', 'end', values=(error.token_type, error.lexeme, error.line, error.index),
                                         tags=('error',))
             if errors:
                 error_message = "Some errors were encountered in the code. See the output for details."
                 messagebox.showerror("Parse Error", error_message)
-                self.result_tree.tag_configure('error', background='pink')
+                self.token_table.tag_configure('error', background='pink')
 
     def load_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
