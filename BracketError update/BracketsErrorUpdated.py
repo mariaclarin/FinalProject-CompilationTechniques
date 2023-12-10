@@ -384,10 +384,9 @@ class JavaScriptGUI:
     def reset_double_click_cooldown(self):
         self.double_click_cooldown = False
 
-    def parse_code(self):
-        # Clear the syntax and token tables before parsing the code
+        def parse_code(self):
+        # Clear the syntax table before parsing the code
         self.syntax_table.delete(*self.syntax_table.get_children())
-        self.token_table.delete(*self.token_table.get_children())
 
         code = self.text.get("1.0", tk.END)
         parser = JavaScriptParser()
@@ -398,6 +397,7 @@ class JavaScriptGUI:
             self.syntax_table.tag_configure('error', background='pink')
         else:
             tokens, errors = parser.tokenize_with_errors(code)
+            self.token_table.delete(*self.token_table.get_children())
             for token in tokens:
                 self.token_table.insert('', 'end', values=(token.token_type, token.lexeme, token.line, token.index))
             for error in errors:
