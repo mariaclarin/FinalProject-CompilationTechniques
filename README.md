@@ -37,7 +37,9 @@ pip install tkinter
 3. run JSValidator.py
 
 ## Program Manual 
-#### Default Main Page
+The program has a default testing code already enterred upon running the file. If the user wants to use a different file to test the load file feature, they can use 'example.txt'.
+
+### Default Main Page
 * Display may vary slightly, the attached display is on Mac OS.
 ![landing page](https://cdn.discordapp.com/attachments/794551109523341353/1183800311362629652/Screen_Shot_2023-12-11_at_22.59.38.png?ex=6589a6f4&is=657731f4&hm=a9088505c8d34cce12934eafafa755bf4dcaa835453ff8f267c1cda770257dd8&)
 </br>
@@ -51,10 +53,10 @@ pip install tkinter
 5. Parse button : starts the tokenization and parsing process of the input code 
 6. Token table row content display event : users can double click on any row to view the full content of the row.
 
-#### Tokens, Token Errors, and Syntax Errors Display 
+### Tokens, Token Errors, and Syntax Errors Display 
 * Display may vary slightly, the attached display is on Mac OS.
 ![errors](https://cdn.discordapp.com/attachments/794551109523341353/1183802810408636447/Screen_Shot_2023-12-11_at_23.09.38.png?ex=6589a947&is=65773447&hm=b79a366557330e0a111ac2e907bfff6e19d9bca62a9442a989010ca4df4b1f58&)
 
-#### Token Table Expand Row Display
+### Token Table Expand Row Display
 * Display may vary slightly, the attached display is on Mac OS.
 ![errors](https://cdn.discordapp.com/attachments/794551109523341353/1183803403822977155/Screen_Shot_2023-12-11_at_23.11.46.png?ex=6589a9d5&is=657734d5&hm=4b950c9c1a124ad8ecd2ca1c403637b4d04e9caaccb377e1450d78bb684f48f0&)
