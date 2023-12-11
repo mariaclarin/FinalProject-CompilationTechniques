@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkinter.font import Font
 
 class Token:
     def __init__(self, token_type, lexeme, line, index):
@@ -7,7 +8,6 @@ class Token:
         self.lexeme = lexeme
         self.line = line
         self.index = index
-
 
 class JavaScriptParser:
     def __init__(self):
@@ -99,23 +99,32 @@ class JavaScriptParser:
 
     def extract_identifier_or_function(self, line, index, line_number):
         # DFA for identifiers
+        keyword = ""
         function = ""
-        for char in line:
-            if char.isspace():
-                pass
-            else:
-                function += char
-                # index += 1
-            if any(func == function for func in self.functions):
-                # print(function)
-                index += len(function)
-                return Token('FunctionCall', function, line_number, index), index
         identifier = ""
-        while index < len(line) and (line[index].isalnum() or line[index] == '_'):
-            identifier += line[index]
-            index += 1
-        
-        return Token('Identifier', identifier, line_number, index), index
+        if any(keyw in line for keyw in self.keywords):
+            while index < len(line) and (line[index].isalnum() or line[index] == '_'):
+                keyword += line[index]
+                index += 1
+            if keyword in self.keywords:
+                return Token('Keyword', keyword, line_number, index), index
+            else:
+                return Token('Identifier', keyword, line_number, index), index
+        else:
+            for char in line:
+                if char.isspace():
+                    pass
+                else:
+                    function += char
+                if any(func == function for func in self.functions):
+                    index += len(function)
+                    return Token('FunctionCall', function, line_number, index), index
+                
+            while index < len(line) and (line[index].isalnum() or line[index] == '_'):
+                identifier += line[index]
+                index += 1
+            
+            return Token('Identifier', identifier, line_number, index), index
     
     def extract_number(self, line, index, line_number):
         # DFA for numbers
@@ -135,7 +144,7 @@ class JavaScriptParser:
             index += 1
 
         if '.' in number:
-            return Token('Decimal', float(number), line_number, index), index
+            return Token('Float', float(number), line_number, index), index
         else:
             return Token('Number', int(number), line_number, index), index
 
@@ -182,7 +191,7 @@ class JavaScriptParser:
                 line_number +=1
             index+=1
         self.multi_line = True
-        return Token('First_Comment', comment, line_number, index), index
+        return Token('First_Comment', comment, line_number, index), index, 
     
     def extract_operator(self, line, index, line_number):
         if line[index] == '/':
@@ -235,32 +244,53 @@ class JavaScriptParser:
         errors = []
         line_number = 1
         for line in code.split('\n'):
-            index = 1
+            index = 0
             for char in line:
+                index += 1
                 if char in {'(', '{', '['}:
                     stack.append((char, line_number, index))
                 elif char in {')', '}', ']'}:
                     if not stack:
-                        errors.append(f"Unmatched closing bracket '{char}' at line {line_number}, index {index}.")
+                        errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
+                        return errors
                     else:
                         last_open, open_line, open_index = stack.pop()
                         if (char == ')' and last_open != '(') or (char == '}' and last_open != '{') or (
                                 char == ']' and last_open != '['):
-                            errors.append(f"Unmatched closing bracket '{char}' at line {line_number}, index {index}.")
-                index += 1
+                            errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
+                            return errors
             line_number += 1
-        for last_open, open_line, open_index in stack:
-            errors.append(f"Unmatched opening bracket '{last_open}' at line {open_line}, index {open_index}.")
-        return errors
 
+        for last_open, open_line, open_index in stack:
+            errors.append((f"Unmatched opening bracket '{last_open}'", open_line, open_index))
+            return errors
+
+        # Check for while loops without brackets
+        for line_number, line in enumerate(code.split('\n'), start=1):
+            if "while" in line and "{" not in line and "}" not in line:
+                errors.append(("While loop without brackets", line_number, len(line) + 1))
+                return errors
+                
+        for line_number, line in enumerate(code.split('\n'), start=1):
+            if "while" in line and "(" not in line and ")" not in line:
+                errors.append(("While loop without parentheses", line_number, len(line) + 1))
+                return errors
+
+        return errors
 
 class JavaScriptGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("JavaScript Validator")
-        self.root.geometry("1200x700")
+        self.root.geometry("1230x1000")
         self.root.resizable(True, True)
         self.text = tk.Text(self.root, wrap='word', width=50, height=10)
+        
+        #left frame containing text input field        
+        self.main_frame = tk.Frame(self.root)
+        self.main_frame.grid(row=0, column=0, sticky='nsew')
+
+        self.text = tk.Text(self.main_frame, wrap='word', width=50, height=10)
         self.text.insert(tk.END, """
         var x = 10.5;
         if (x > 5) {
@@ -273,8 +303,9 @@ class JavaScriptGUI:
                 break;
             }
         }
-        while (x === 1){
-            console.log(x);
+        while (x === 10.5){
+            console.log("Hello");
+            break;
         }
         alert("This is an alert!");
         //comment here
@@ -282,54 +313,111 @@ class JavaScriptGUI:
         here
         */
         """)
-
         self.text.grid(row=0, column=0, padx=10, pady=10, sticky='news')
+        self.text.columnconfigure(0, weight=1)
 
-        self.scrollbar = tk.Scrollbar(self.root, command=self.text.yview)
+        #divider
+        self.scrollbar = tk.Scrollbar(self.main_frame, command=self.text.yview)
         self.scrollbar.grid(row=0, column=1, sticky='ns')
         self.text['yscrollcommand'] = self.scrollbar.set
 
-        self.result_tree = ttk.Treeview(self.root, columns=('Token Type', 'Lexeme', 'Line', 'Index'), show='headings')
-        self.result_tree.heading('Token Type', text='Token Type')
-        self.result_tree.heading('Lexeme', text='Lexeme')
-        self.result_tree.heading('Line', text='Line')
-        self.result_tree.heading('Index', text='Index')
-        self.result_tree.column('Token Type', anchor='center')
-        self.result_tree.column('Lexeme', anchor='center')
-        self.result_tree.column('Line', anchor='center')
-        self.result_tree.column('Index', anchor='center')
-
-        self.result_tree.grid(row=0, column=2, padx=10, pady=10, sticky='news')
-
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(0, weight=1)
-        self.root.columnconfigure(2, weight=1)
 
+        #frame of tables (right side)
+        self.tables_frame = tk.Frame(self.main_frame)
+        self.tables_frame.grid(row=0, column=2, padx=10, pady=10, sticky='nsew')
+
+        #token table
+        self.token_table = ttk.Treeview(self.tables_frame, columns=('Token Type', 'Lexeme', 'Line', 'Index'), show='headings')
+        self.token_table.heading('Token Type', text='Token Type')
+        self.token_table.heading('Lexeme', text='Lexeme')
+        self.token_table.heading('Line', text='Line')
+        self.token_table.heading('Index', text='Index')
+        self.token_table.column('Token Type', anchor='center')
+        self.token_table.column('Lexeme', anchor='center')
+        self.token_table.column('Line', anchor='center')
+        self.token_table.column('Index', anchor='center')
+        self.token_table.grid(row=0, column=0, padx=10, pady=10, sticky='news')
+
+        #syntax table
+        self.syntax_table = ttk.Treeview(self.tables_frame, columns=('Syntax Errors', 'Line', 'Index'), show='headings')
+        self.syntax_table.heading('Syntax Errors', text='Syntax Errors')
+        self.syntax_table.heading('Line', text='Line')
+        self.syntax_table.heading('Index', text='Index')
+        self.syntax_table.column('Syntax Errors', anchor='center')
+        self.syntax_table.column('Line', anchor='center', width= 100)
+        self.syntax_table.column('Index', anchor='center')
+        self.syntax_table.grid(row=1, column=0, padx=10, pady=10, sticky='news')
+        self.syntax_table.column('Syntax Errors', width=500)  # Set a specific width for the "Syntax Errors" column
+        self.syntax_table.column('Line', width=100)  
+        self.syntax_table.column('Index', width=100)  
+
+        #frame of tables sizing config
+        self.tables_frame.rowconfigure(0, weight=2)
+        self.tables_frame.rowconfigure(1, weight=1)  
+        self.tables_frame.columnconfigure(0, weight=1)
+        self.tables_frame.columnconfigure(1, weight=1)
+
+        #parse and load file button config
         self.parse_button = tk.Button(self.root, text="Parse", command=self.parse_code)
-        self.parse_button.grid(row=1, column=0, columnspan=3, pady=10)
+        self.parse_button.grid(row=3, column=0, pady=(5, 5),padx=(0,200), sticky='s')
 
         self.load_file_button = tk.Button(self.root, text="Load File", command=self.load_file)
-        self.load_file_button.grid(row=1, column=0, pady=10)
+        self.load_file_button.grid(row=3, column=0, pady=(5, 5), padx=(200,0), sticky='s')
+
+        #rowsize for table rows
+        font = Font(family='Arial', size=20) 
+        style = ttk.Style()
+        style.configure('Treeview', rowheight= font.metrics()['linespace']+20  ) 
+
+        #double click event for row display popup
+        self.double_click_cooldown = False
+        self.token_table.bind("<Double-1>", self.on_double_click)
+    
+    def on_double_click(self, event):
+        if not self.double_click_cooldown:
+            item = self.token_table.selection()
+            if item:
+                #get the content in the row
+                item_values = self.token_table.item(item, "values")
+                messagebox.showinfo("Row Information", f"Token Type: {item_values[0]}\n"
+                                                    f"Lexeme: {item_values[1]}\n"
+                                                    f"Line: {item_values[2]}\n"
+                                                    f"Index: {item_values[3]}")
+
+            #prevent double popups with a cooldown
+            self.double_click_cooldown = True
+            self.root.after(500, self.reset_double_click_cooldown)
+
+    def reset_double_click_cooldown(self):
+        self.double_click_cooldown = False
 
     def parse_code(self):
+        # Clear the syntax table before parsing the code
+        self.syntax_table.delete(*self.syntax_table.get_children())
+
         code = self.text.get("1.0", tk.END)
         parser = JavaScriptParser()
         bracket_errors = parser.check_brackets(code)
+        # loop_errors = parser.check_loops_syntax(code)
+        
         if bracket_errors:
-            error_message = "\n".join(bracket_errors)
-            messagebox.showerror("Bracket Error", error_message)
+            for error in bracket_errors:
+                self.syntax_table.insert('', 'end', values=(error[0], error[1], error[2]), tags=('error',))
+            self.syntax_table.tag_configure('error', background='pink')
         else:
             tokens, errors = parser.tokenize_with_errors(code)
-            self.result_tree.delete(*self.result_tree.get_children())
+            self.token_table.delete(*self.token_table.get_children())
             for token in tokens:
-                self.result_tree.insert('', 'end', values=(token.token_type, token.lexeme, token.line, token.index))
+                self.token_table.insert('', 'end', values=(token.token_type, token.lexeme, token.line, token.index))
             for error in errors:
-                self.result_tree.insert('', 'end', values=(error.token_type, error.lexeme, error.line, error.index),
+                self.token_table.insert('', 'end', values=(error.token_type, error.lexeme, error.line, error.index),
                                         tags=('error',))
             if errors:
                 error_message = "Some errors were encountered in the code. See the output for details."
                 messagebox.showerror("Parse Error", error_message)
-                self.result_tree.tag_configure('error', background='pink')
+            self.token_table.tag_configure('error', background='pink')
 
     def load_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
@@ -339,12 +427,10 @@ class JavaScriptGUI:
                 self.text.delete("1.0", tk.END)
                 self.text.insert(tk.END, code)
 
-
 def main():
     root = tk.Tk()
     app = JavaScriptGUI(root)
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
