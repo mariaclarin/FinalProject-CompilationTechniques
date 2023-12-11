@@ -252,29 +252,25 @@ class JavaScriptParser:
                 elif char in {')', '}', ']'}:
                     if not stack:
                         errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
-                        return errors
                     else:
                         last_open, open_line, open_index = stack.pop()
                         if (char == ')' and last_open != '(') or (char == '}' and last_open != '{') or (
                                 char == ']' and last_open != '['):
                             errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
-                            return errors
+
             line_number += 1
 
         for last_open, open_line, open_index in stack:
             errors.append((f"Unmatched opening bracket '{last_open}'", open_line, open_index))
-            return errors
 
         # Check for while loops without brackets
         for line_number, line in enumerate(code.split('\n'), start=1):
             if "while" in line and "{" not in line and "}" not in line:
                 errors.append(("While loop without brackets", line_number, len(line) + 1))
-                return errors
                 
         for line_number, line in enumerate(code.split('\n'), start=1):
             if "while" in line and "(" not in line and ")" not in line:
                 errors.append(("While loop without parentheses", line_number, len(line) + 1))
-                return errors
 
         return errors
 
