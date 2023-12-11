@@ -72,7 +72,7 @@ class JavaScriptParser:
                     if token:
                         tokens.append(token)
                 else:
-                    error_message = f"Invalid character '{char}' at line {line_number}, index {index}."
+                    error_message = f"Unrecognized Token '{char}'."
                     errors.append(Token('Error', error_message, line_number, index))
                     index += 1  # Skip the invalid character and continue parsing
 
@@ -241,7 +241,7 @@ class JavaScriptParser:
         
     def check_brackets(self, code):
         stack = []
-        errors = []
+        errorssyn = []
         line_number = 1
         for line in code.split('\n'):
             index = 0
@@ -251,28 +251,28 @@ class JavaScriptParser:
                     stack.append((char, line_number, index))
                 elif char in {')', '}', ']'}:
                     if not stack:
-                        errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
+                        errorssyn.append((f"Unmatched closing bracket '{char}'", line_number, index))
                     else:
                         last_open, open_line, open_index = stack.pop()
                         if (char == ')' and last_open != '(') or (char == '}' and last_open != '{') or (
                                 char == ']' and last_open != '['):
-                            errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
+                            errorssyn.append((f"Unmatched closing bracket '{char}'", line_number, index))
 
             line_number += 1
 
         for last_open, open_line, open_index in stack:
-            errors.append((f"Unmatched opening bracket '{last_open}'", open_line, open_index))
+            errorssyn.append((f"Unmatched opening bracket '{last_open}'", open_line, open_index))
 
         # Check for while loops without brackets
         for line_number, line in enumerate(code.split('\n'), start=1):
             if "while" in line and "{" not in line and "}" not in line:
-                errors.append(("While loop without brackets", line_number, len(line) + 1))
+                errorssyn.append(("While loop without brackets", line_number, len(line) + 1))
                 
         for line_number, line in enumerate(code.split('\n'), start=1):
             if "while" in line and "(" not in line and ")" not in line:
-                errors.append(("While loop without parentheses", line_number, len(line) + 1))
+                errorssyn.append(("While loop without parentheses", line_number, len(line) + 1))
 
-        return errors
+        return errorssyn
 
 class JavaScriptGUI:
     def __init__(self, root):
@@ -345,9 +345,9 @@ class JavaScriptGUI:
         self.syntax_table.column('Line', anchor='center', width= 100)
         self.syntax_table.column('Index', anchor='center')
         self.syntax_table.grid(row=1, column=0, padx=10, pady=10, sticky='news')
-        self.syntax_table.column('Syntax Errors', width=500)  # Set a specific width for the "Syntax Errors" column
-        self.syntax_table.column('Line', width=100)  
-        self.syntax_table.column('Index', width=100)  
+        self.syntax_table.column('Syntax Errors', width=400)  # Set a specific width for the "Syntax Errors" column
+        self.syntax_table.column('Line', width=200)  
+        self.syntax_table.column('Index', width=200)  
 
         #frame of tables sizing config
         self.tables_frame.rowconfigure(0, weight=2)
@@ -365,7 +365,7 @@ class JavaScriptGUI:
         #rowsize for table rows
         font = Font(family='Arial', size=20) 
         style = ttk.Style()
-        style.configure('Treeview', rowheight= font.metrics()['linespace']+20  ) 
+        style.configure('Treeview', rowheight= font.metrics()['linespace']+25  ) 
 
         #double click event for row display popup
         self.double_click_cooldown = False
@@ -397,23 +397,19 @@ class JavaScriptGUI:
         parser = JavaScriptParser()
         bracket_errors = parser.check_brackets(code)
         # loop_errors = parser.check_loops_syntax(code)
-        
-        if bracket_errors:
-            for error in bracket_errors:
-                self.syntax_table.insert('', 'end', values=(error[0], error[1], error[2]), tags=('error',))
-            self.syntax_table.tag_configure('error', background='red')
-        else:
-            tokens, errors = parser.tokenize_with_errors(code)
-            self.token_table.delete(*self.token_table.get_children())
-            for token in tokens:
-                self.token_table.insert('', 'end', values=(token.token_type, token.lexeme, token.line, token.index))
-            for error in errors:
-                self.token_table.insert('', 'end', values=(error.token_type, error.lexeme, error.line, error.index),
-                                        tags=('error',))
-            if errors:
-                error_message = "Some errors were encountered in the code. See the output for details."
-                messagebox.showerror("Parse Error", error_message)
-            self.token_table.tag_configure('error', background='red')
+        for error in bracket_errors:
+            self.syntax_table.insert('', 'end', values=(error[0], error[1], error[2]), tags=('error',))
+        self.syntax_table.tag_configure('error', background='red')
+        tokens, errors = parser.tokenize_with_errors(code)
+        self.token_table.delete(*self.token_table.get_children())
+        for token in tokens:
+            self.token_table.insert('', 'end', values=(token.token_type, token.lexeme, token.line, token.index))
+
+        for error in errors:
+            self.token_table.insert('', 'end', values=(error.token_type, error.lexeme, error.line, error.index),
+                                    tags=('error',))
+
+        self.token_table.tag_configure('error', background='red')
 
     def load_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])

@@ -1,6 +1,8 @@
 // Example JavaScript Code
 var x = 10;
-
+/* this 
+is a sample 
+comment */
 function factorial(n) {
     if (n <= 1) {
         return 1;
@@ -9,7 +11,7 @@ function factorial(n) {
     }
 }
 
-for (var i = 0; i < 5; i++) {
+while (var i = 0) {
     console.log("Factorial of", i, "is", factorial(i));
 }
 
