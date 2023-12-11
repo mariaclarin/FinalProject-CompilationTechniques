@@ -401,7 +401,7 @@ class JavaScriptGUI:
         if bracket_errors:
             for error in bracket_errors:
                 self.syntax_table.insert('', 'end', values=(error[0], error[1], error[2]), tags=('error',))
-            self.syntax_table.tag_configure('error', background='pink')
+            self.syntax_table.tag_configure('error', background='red')
         else:
             tokens, errors = parser.tokenize_with_errors(code)
             self.token_table.delete(*self.token_table.get_children())
@@ -413,7 +413,7 @@ class JavaScriptGUI:
             if errors:
                 error_message = "Some errors were encountered in the code. See the output for details."
                 messagebox.showerror("Parse Error", error_message)
-            self.token_table.tag_configure('error', background='pink')
+            self.token_table.tag_configure('error', background='red')
 
     def load_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
