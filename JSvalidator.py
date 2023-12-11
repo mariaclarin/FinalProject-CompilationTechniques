@@ -2,15 +2,12 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from tkinter.font import Font
 
-
-
 class Token:
     def __init__(self, token_type, lexeme, line, index):
         self.token_type = token_type
         self.lexeme = lexeme
         self.line = line
         self.index = index
-
 
 class JavaScriptParser:
     def __init__(self):
@@ -102,23 +99,32 @@ class JavaScriptParser:
 
     def extract_identifier_or_function(self, line, index, line_number):
         # DFA for identifiers
+        keyword = ""
         function = ""
-        for char in line:
-            if char.isspace():
-                pass
-            else:
-                function += char
-                # index += 1
-            if any(func == function for func in self.functions):
-                # print(function)
-                index += len(function)
-                return Token('FunctionCall', function, line_number, index), index
         identifier = ""
-        while index < len(line) and (line[index].isalnum() or line[index] == '_'):
-            identifier += line[index]
-            index += 1
-        
-        return Token('Identifier', identifier, line_number, index), index
+        if any(keyw in line for keyw in self.keywords):
+            while index < len(line) and (line[index].isalnum() or line[index] == '_'):
+                keyword += line[index]
+                index += 1
+            if keyword in self.keywords:
+                return Token('Keyword', keyword, line_number, index), index
+            else:
+                return Token('Identifier', keyword, line_number, index), index
+        else:
+            for char in line:
+                if char.isspace():
+                    pass
+                else:
+                    function += char
+                if any(func == function for func in self.functions):
+                    index += len(function)
+                    return Token('FunctionCall', function, line_number, index), index
+                
+            while index < len(line) and (line[index].isalnum() or line[index] == '_'):
+                identifier += line[index]
+                index += 1
+            
+            return Token('Identifier', identifier, line_number, index), index
     
     def extract_number(self, line, index, line_number):
         # DFA for numbers
@@ -238,24 +244,35 @@ class JavaScriptParser:
         errors = []
         line_number = 1
         for line in code.split('\n'):
-            index = 1
+            index = 0
             for char in line:
+                index += 1
                 if char in {'(', '{', '['}:
                     stack.append((char, line_number, index))
                 elif char in {')', '}', ']'}:
                     if not stack:
-                        errors.append(f"Unmatched closing bracket '{char}' at line {line_number}, index {index}.")
+                        errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
                     else:
                         last_open, open_line, open_index = stack.pop()
                         if (char == ')' and last_open != '(') or (char == '}' and last_open != '{') or (
                                 char == ']' and last_open != '['):
-                            errors.append(f"Unmatched closing bracket '{char}' at line {line_number}, index {index}.")
-                index += 1
-            line_number += 1
-        for last_open, open_line, open_index in stack:
-            errors.append(f"Unmatched opening bracket '{last_open}' at line {open_line}, index {open_index}.")
-        return errors
+                            errors.append((f"Unmatched closing bracket '{char}'", line_number, index))
 
+            line_number += 1
+
+        for last_open, open_line, open_index in stack:
+            errors.append((f"Unmatched opening bracket '{last_open}'", open_line, open_index))
+
+        # Check for while loops without brackets
+        for line_number, line in enumerate(code.split('\n'), start=1):
+            if "while" in line and "{" not in line and "}" not in line:
+                errors.append(("While loop without brackets", line_number, len(line) + 1))
+                
+        for line_number, line in enumerate(code.split('\n'), start=1):
+            if "while" in line and "(" not in line and ")" not in line:
+                errors.append(("While loop without parentheses", line_number, len(line) + 1))
+
+        return errors
 
 class JavaScriptGUI:
     def __init__(self, root):
@@ -264,24 +281,7 @@ class JavaScriptGUI:
         self.root.geometry("1230x1000")
         self.root.resizable(True, True)
         self.text = tk.Text(self.root, wrap='word', width=50, height=10)
-        self.text.insert(tk.END, """
-        var x = 10.5;
-        if (x > 5) {
-            console.log("Hello, world!");
-        }
-        for (var i = 0; i < 5; i++) {
-            if (i % 2 === 0) {
-                continue;
-            } else {
-                break;
-            }
-        }
-        alert("This is an alert!");
-        //comment here
-        /*multiline
-        here
-        */
-        """)
+        
         #left frame containing text input field        
         self.main_frame = tk.Frame(self.root)
         self.main_frame.grid(row=0, column=0, sticky='nsew')
@@ -298,6 +298,10 @@ class JavaScriptGUI:
             } else {
                 break;
             }
+        }
+        while (x === 10.5){
+            console.log("Hello");
+            break;
         }
         alert("This is an alert!");
         //comment here
@@ -345,13 +349,11 @@ class JavaScriptGUI:
         self.syntax_table.column('Line', width=100)  
         self.syntax_table.column('Index', width=100)  
 
-
         #frame of tables sizing config
         self.tables_frame.rowconfigure(0, weight=2)
         self.tables_frame.rowconfigure(1, weight=1)  
         self.tables_frame.columnconfigure(0, weight=1)
         self.tables_frame.columnconfigure(1, weight=1)
-
 
         #parse and load file button config
         self.parse_button = tk.Button(self.root, text="Parse", command=self.parse_code)
@@ -388,12 +390,18 @@ class JavaScriptGUI:
         self.double_click_cooldown = False
 
     def parse_code(self):
+        # Clear the syntax table before parsing the code
+        self.syntax_table.delete(*self.syntax_table.get_children())
+
         code = self.text.get("1.0", tk.END)
         parser = JavaScriptParser()
         bracket_errors = parser.check_brackets(code)
+        # loop_errors = parser.check_loops_syntax(code)
+        
         if bracket_errors:
-            error_message = "\n".join(bracket_errors)
-            messagebox.showerror("Bracket Error", error_message)
+            for error in bracket_errors:
+                self.syntax_table.insert('', 'end', values=(error[0], error[1], error[2]), tags=('error',))
+            self.syntax_table.tag_configure('error', background='red')
         else:
             tokens, errors = parser.tokenize_with_errors(code)
             self.token_table.delete(*self.token_table.get_children())
@@ -405,7 +413,7 @@ class JavaScriptGUI:
             if errors:
                 error_message = "Some errors were encountered in the code. See the output for details."
                 messagebox.showerror("Parse Error", error_message)
-                self.token_table.tag_configure('error', background='pink')
+            self.token_table.tag_configure('error', background='red')
 
     def load_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
@@ -415,12 +423,10 @@ class JavaScriptGUI:
                 self.text.delete("1.0", tk.END)
                 self.text.insert(tk.END, code)
 
-
 def main():
     root = tk.Tk()
     app = JavaScriptGUI(root)
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
