@@ -11,6 +11,11 @@ Members: </br>
 * Maria Clarin (2501990331)
 * Nicholas Valerianus Budiman (2502055596)
 
+## External Links
+* [Final Presentation](https://www.canva.com/design/DAF3O2ptnrE/6VxPn5pNR0giF1RD52VUPQ/view?utm_content=DAF3O2ptnrE&utm_campaign=designshare&utm_medium=link&utm_source=editor)
+* [Final Report](https://docs.google.com/document/d/e/2PACX-1vRF5w_TB5O_UCuLyHgIAUgN--m3ia09Bl13lHoxhakkBH7NK6dBbdNZPUAhRQyrYN52EEhDrDpbPXyE/pub)
+* [Video Demonstration](https://drive.google.com/file/d/1ScoUag0YFgRoMZ2U00fCeTvvkK0_dCW_/view)
+  
 ## Specification and Limitation
 #### Tokens recognized and Lexemes Within: </br>
 1. **Keywords** : 'if', 'else', 'while', 'function', 'var', 'return', 'for', 'break', 'continue','true', 'false', 'null', 'undefined', 'new', 'this' </br>
